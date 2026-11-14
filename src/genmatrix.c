@@ -55,7 +55,7 @@ int main(void)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(fp, "}\n\n");
+	fprintf(fp, "};\n\n");
 
 	fprintf(fp, "uint8_t\nr_fn_minila_k375s[13][8] =\n{\n");
 	for (i = 0; i < 13; i ++) {
@@ -70,7 +70,7 @@ int main(void)
 		fprintf(fp, "\n");
 	}
 
-	fprintf(fp, "}\n");
+	fprintf(fp, "};\n");
 	fclose(fp);
 	return 0;
 }
