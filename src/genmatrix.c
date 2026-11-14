@@ -48,7 +48,10 @@ int main(void)
 		fprintf(fp, "\t");
 		for (j = 0; j < 8; j ++) {
 			k = find_match(r_minila_matrix[i][j]);
-			fprintf(fp, "0x%0X, ", k);
+			if (j == 7)
+				fprintf(fp, "0x%0X,", k);
+			else
+				fprintf(fp, "0x%0X, ", k);
 			if (k == 0 && r_minila_matrix[i][j] != 0) {
 				printf("can't find match for r_minila[%d][%d]\n", i+1, j+1);
 			}
@@ -62,7 +65,10 @@ int main(void)
 		fprintf(fp, "\t");
 		for (j = 0; j < 8; j ++) {
 			k = find_match(r_fn_minila_matrix[i][j]);
-			fprintf(fp, "0x%0X, ", k);
+			if (j == 7)
+				fprintf(fp, "0x%0X,", k);
+			else
+				fprintf(fp, "0x%0X, ", k);
 			if (k == 0 && r_fn_minila_matrix[i][j] != 0) {
 				printf("can't find match for r_fn_minila[%d][%d]\n", i+1, j+1);
 			}
