@@ -43,7 +43,7 @@ int main(void)
 
 	printf("writing map matrix to %s\n", MATRIX_FN);
 
-	fprintf(fp, "uint8_t r_minila_k375s[13][8] = {\n");
+	fprintf(fp, "uint8_t\nr_minila_k375s[13][8] =\n{\n");
 	for (i = 0; i < 13; i ++) {
 		fprintf(fp, "\t");
 		for (j = 0; j < 8; j ++) {
@@ -55,9 +55,9 @@ int main(void)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(fp, "\n");
+	fprintf(fp, "}\n\n");
 
-	fprintf(fp, "uint8_t r_fn_minila_k375s[13][8] = {\n");
+	fprintf(fp, "uint8_t\nr_fn_minila_k375s[13][8] =\n{\n");
 	for (i = 0; i < 13; i ++) {
 		fprintf(fp, "\t");
 		for (j = 0; j < 8; j ++) {
@@ -70,6 +70,7 @@ int main(void)
 		fprintf(fp, "\n");
 	}
 
+	fprintf(fp, "}\n");
 	fclose(fp);
 	return 0;
 }
