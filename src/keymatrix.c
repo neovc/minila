@@ -445,7 +445,7 @@
 #define KEY_KP_8          0xE8
 #define KEY_KP_9          0xE9
 #define KEY_KP_0          0xEA
-#define KEY_KP_DOT        0xEB
+#define KEY_KP_DOT        0xEB /* KP DELETE */
 
 // Function keys
 #define KEY_F1            0xC2
@@ -475,82 +475,136 @@
 
 // FN Keys
 #define KEY_FN            0xFC
-#define KEY_L_FN          0xFD
-#define KEY_R_FN          0xFE
-#define KEY_ESC           0x1B
-#define KEY_TAB		  0x09
-#define KEY_ENTER         0x0D
-#define KEY_SPACE         0x20
+#define KEY_FN_L          0xFC
+#define KEY_FN_R          0xFC
 
 
 int k375s_matrix[13][10] = {
-//      23,              22,              21,              20,              19,
-	{'`',            KEY_PAGE_DOWN,   KEY_KP_DOT,      KEY_KP_7,        KEY_KP_PLUS,
-//              18,             17,           16,              15,            14
-		0,              KEY_KP_0,     KEY_KP_ENTER,    'A',           KEY_KP_5},  /* 1 */
-	{KEY_HOME,       KEY_PAGE_UP,     KEY_KP_ASTERISK, KEY_KP_MINUS,    KEY_KP_SLASH,
-		'\\',           KEY_KP_1,     KEY_F7,          'F',           KEY_KP_8},  /* 2 */
-	{'Q',            '6',             'S',             'O',             KEY_ENTER /* CR */,
-		'V',            8 /* BS */,   KEY_F10,         '[',           KEY_F6},    /* 3 */
-	{'B',            KEY_TAB,         KEY_DELETE,      '8',             'D',
-		'Y',            '<',          'T',             KEY_CAPS_LOCK, '3'},       /* 4 */
-	{'X',            'M',             'H',             '\\'/*??*/,      'L',
-		'?',            KEY_F2,       KEY_F1,          'R',           KEY_F8},    /* 5 */
-	{KEY_F11,        '9',             'J',             '0',             ']',
-		KEY_INSERT,     'E',          '1',             '>',           KEY_F4},    /* 6 */
-	{'5',            KEY_ESC,         'K',             '-',             '\"',
-		KEY_F12,        'W',          '2',             ';',           '='},       /* 7 */
-	{'.',            KEY_UP_ARROW,    '4',             KEY_DOWN_ARROW,  'U',
-		KEY_LEFT_ARROW, 'N',          KEY_RIGHT_ARROW, '7',           KEY_F9},    /* 8 */
-	{KEY_END,        KEY_KP_2,        KEY_KP_3,        KEY_KP_6,        KEY_KP_9,
-		0,              0,            KEY_FN,          'I',           KEY_NUM_LOCK}, /* 9 */
-	{0,              0,               0,               0,               0,
-		0,              KEY_LEFT_GUI, KEY_PAUSE,       'Z',           'G'},       /* 10 */
-	{0,              0,               0,               0,               KP_LEFT_CTRL,
-		KP_RIGHT_CTRL,  0,            KEY_SCR_LOCK,    KEY_F3,        'C'},       /* 11 */
-	{0,              0,               KEY_LEFT_ALT,    KEY_RIGHT_ALT,   0,
-		0,              0,            0,               'P',           KEY_F5},    /* 12 */
-	{KEY_LEFT_SHIFT, KEY_RIGHT_SHIFT, 0,               0,               0,
-		0,              0,            0,               KEY_KP_4,      KEY_SPACE}  /* 13 */
+	/* 23, 22, 21, 20, 19, 18, 17, 16, 15, 14 */
+	/* 1 */
+	{HID_KEY_GRAVE, HID_KEY_PAGE_DOWN, KEY_KP_DOT, KEY_KP_7, KEY_KP_PLUS, HID_KEY_NONE, KEY_KP_0, KEY_KP_ENTER, HID_KEY_A, KEY_KP_5},
+	/* 2 */
+	{HID_KEY_HOME, HID_KEY_PAGE_UP, KEY_KP_ASTERISK, KEY_KP_MINUS, KEY_KP_SLASH, HID_KEY_BACKSLASH, KEY_KP_1, HID_KEY_F7, HID_KEY_F, KEY_KP_8},
+	/* 3 */
+	{HID_KEY_Q, HID_KEY_6, HID_KEY_S, HID_KEY_O, HID_KEY_RETURN, HID_KEY_V, HID_KEY_BACKSPACE, HID_KEY_F10, HID_KEY_BRACKET_LEFT, HID_KEY_F6},
+	/* 4 */
+	{HID_KEY_B, HID_KEY_TAB, HID_KEY_DELETE, HID_KEY_8, HID_KEY_D, HID_KEY_Y, HID_KEY_COMMA, HID_KEY_T, HID_KEY_CAPS_LOCK, HID_KEY_3},
+	/* 5 */
+	{HID_KEY_X, HID_KEY_M, HID_KEY_H, HID_KEY_BACKSLASH, HID_KEY_L, HID_KEY_SLASH, HID_KEY_F2, HID_KEY_F1, HID_KEY_R, HID_KEY_F8},
+	/* 6 */
+	{HID_KEY_F11, HID_KEY_9, HID_KEY_J, HID_KEY_0, HID_KEY_BRACKET_RIGHT, HID_KEY_INSERT, HID_KEY_E, HID_KEY_1, HID_KEY_PERIOD, HID_KEY_F4},
+	/* 7 */
+	{HID_KEY_5, HID_KEY_ESCAPE, HID_KEY_K, HID_KEY_MINUS, HID_KEY_APOSTROPHE, HID_KEY_F12, HID_KEY_W, HID_KEY_2, HID_KEY_SEMICOLON, HID_KEY_EQUAL},
+	/* 8 */
+	{HID_KEY_PERIOD, HID_KEY_ARROW_UP, HID_KEY_4, HID_KEY_ARROW_DOWN, HID_KEY_U, HID_KEY_ARROW_LEFT, HID_KEY_N, HID_KEY_ARROW_RIGHT, HID_KEY_7, HID_KEY_F9},
+	/* 9 */
+	{HID_KEY_END, KEY_KP_2, KEY_KP_3, KEY_KP_6, KEY_KP_9, HID_KEY_NONE, HID_KEY_NONE, KEY_FN, HID_KEY_I,  KEY_NUM_LOCK},
+	/* 10 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_GUI_LEFT, HID_KEY_PAUSE, HID_KEY_Z, HID_KEY_G},
+	/* 11 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_CONTROL_LEFT, HID_KEY_CONTROL_RIGHT, HID_KEY_NONE, HID_KEY_SCROLL_LOCK, HID_KEY_F3, HID_KEY_C},
+	/* 12 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ALT_LEFT, HID_KEY_ALT_RIGHT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_PRINT_SCREEN, HID_KEY_P, HID_KEY_F5},
+	/* 13 */
+	{HID_KEY_SHIFT_LEFT, HID_KEY_SHIFT_RIGHT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, KEY_KP_4, HID_KEY_SPACE}
 };
 
 int minila_matrix[17][8] = {
-//       R0,           R1,             R2,             R3,           R4,         R5,              R6,            R7
-	{0,            0,              0,              0,            0,          0,               KEY_LEFT_CTRL, 0},    /* C0 */
-	{'Q',          KEY_TAB,        'A',            KEY_ESC,      'Z',        0,               '`',           '1'},  /* C1 */
-	{'W',          KEY_CAPS_LOCK,  'S',            0,            'X',        0,               0,             '2'},  /* C2 */
-	{'E',          0,              'D',            0,            'C',        0,               0,             '3'},  /* C3 */
-	{'R',          'T',            'F',            'G',          'V',        'B',             '5',           '4'},  /* C4 */
-	{'U',          'Y',            'J',            'H',          'M',        'N',             '6',           '7'},  /* C5 */
-	{'I',          ']',            'K',            0,            '<',        0,               '=',           '8'},  /* C6 */
-	{'O',          0,              'L',            0,            '>',        0,               0,             '9'},  /* C7 */
-	{'P',          '[',            ';',            '\"',         0,          '?',             '-',           '0'},  /* C8 */
-	{KEY_R_FN,     0,              KEY_L_FN,       KEY_LEFT_ALT, 0,          KEY_RIGHT_ALT,   0,             0},    /* C9 */
-	{0,            KEY_BACKSPACE,  '\\',           0,            KEY_ENTER,  0,               KEY_DELETE,    0},    /* C10 */
-	{0,            0,              0,              KEY_SPACE,    0,          KEY_DOWN_ARROW,  0,             0},    /* C11 */
-	{0,            0,              0,              0,            0,          KEY_RIGHT_ARROW, 0,             0},    /* C12 */
-	{0,            0,              0,              0,            0,          KEY_RIGHT_GUI,   0,             0},    /* C13 */
-	{0,            0,              KEY_UP_ARROW,   0,            0,          KEY_LEFT_ARROW,  0,             0},    /* C14 */
-	{0,            KEY_LEFT_SHIFT, 0,              0,            0,          KEY_RIGHT_SHIFT, 0,             0},    /* C15 */
-	{KEY_LEFT_GUI, 0,              0,              0,            0,          0,               0,             0},    /* OC13 */
+	/*  R0,  R1, R2, R3, R4, R5, R6, R7 */
+	/* C0 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_CONTROL_LEFT, HID_KEY_NONE},
+	/* C1 */
+	{HID_KEY_Q, HID_KEY_TAB, HID_KEY_A, HID_KEY_ESCAPE, HID_KEY_Z, HID_KEY_NONE, HID_KEY_GRAVE, HID_KEY_1},
+	/* C2 */
+	{HID_KEY_W, HID_KEY_CAPS_LOCK, HID_KEY_S, HID_KEY_NONE, HID_KEY_X, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_2},
+	/* C3 */
+	{HID_KEY_E, HID_KEY_NONE, HID_KEY_D, HID_KEY_NONE, HID_KEY_C, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_3},
+	/* C4 */
+	{HID_KEY_R, HID_KEY_T, HID_KEY_F, HID_KEY_G, HID_KEY_V, HID_KEY_B, HID_KEY_5, HID_KEY_4},
+	/* C5 */
+	{HID_KEY_U, HID_KEY_Y, HID_KEY_J, HID_KEY_H, HID_KEY_M, HID_KEY_N, HID_KEY_6, HID_KEY_7},
+	/* C6 */
+	{HID_KEY_I, HID_KEY_BRACKET_RIGHT, HID_KEY_K, HID_KEY_NONE, HID_KEY_COMMA, HID_KEY_NONE, HID_KEY_EQUAL, HID_KEY_8},
+	/* C7 */
+	{HID_KEY_O, HID_KEY_NONE, HID_KEY_L, HID_KEY_NONE, HID_KEY_PERIOD, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_9},
+	/* C8 */
+	{HID_KEY_P, HID_KEY_BRACKET_LEFT, HID_KEY_SEMICOLON, HID_KEY_APOSTROPHE, HID_KEY_NONE, HID_KEY_SLASH, HID_KEY_MINUS/*-*/, HID_KEY_0},
+	/* C9 */
+	{KEY_FN_R, HID_KEY_NONE, KEY_FN_L, HID_KEY_ALT_LEFT, HID_KEY_NONE, HID_KEY_ALT_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C10 */
+	{HID_KEY_NONE, HID_KEY_BACKSPACE, HID_KEY_BACKSLASH, HID_KEY_NONE, HID_KEY_RETURN, HID_KEY_NONE, HID_KEY_DELETE, HID_KEY_NONE},
+	/* C11 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_SPACE, HID_KEY_NONE, HID_KEY_ARROW_DOWN, HID_KEY_NONE, HID_KEY_NONE},
+	/* C12 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C13 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_GUI_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C14 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_UP, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_LEFT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C15 */
+	{HID_KEY_NONE, HID_KEY_SHIFT_LEFT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_SHIFT_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* OC13 */
+	{HID_KEY_GUI_LEFT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE},
 };
 
 int r_minila_matrix[13][8] = { /* reduced minila matrix */
-//       R0,           R1,             R2,             R3,           R4,         R5,              R6,            R7
-	{KEY_LEFT_GUI, 0,              KEY_UP_ARROW,   0,            0,          KEY_LEFT_ARROW,  KEY_LEFT_CTRL, 0},    /* C0 + OC13 + C14 */
-	{'Q',          KEY_TAB,        'A',            KEY_ESC,      'Z',        0,               '`',           '1'},  /* C1 */
-	{'W',          KEY_CAPS_LOCK,  'S',            0,            'X',        0,               0,             '2'},  /* C2 */
-	{'E',          0,              'D',            0,            'C',        0,               0,             '3'},  /* C3 */
-	{'R',          'T',            'F',            'G',          'V',        'B',             '5',           '4'},  /* C4 */
-	{'U',          'Y',            'J',            'H',          'M',        'N',             '6',           '7'},  /* C5 */
-	{'I',          ']',            'K',            0,            '<',        0,               '=',           '8'},  /* C6 */
-	{'O',          KEY_LEFT_SHIFT, 'L',            0,            '>',        KEY_RIGHT_SHIFT, 0,             '9'},  /* C7 + C15 */
-	{'P',          '[',            ';',            '\"',         0,          '?',             '-',           '0'},  /* C8 */
-	{KEY_R_FN,     0,              KEY_L_FN,       KEY_LEFT_ALT, 0,          KEY_RIGHT_ALT,   0,             0},    /* C9 */
-	{0,            KEY_BACKSPACE,  '\\',           0,            KEY_ENTER,  KEY_RIGHT_GUI,   KEY_DELETE,    0},    /* C10 + C13 */
-	{0,            0,              0,              KEY_SPACE,    0,          KEY_DOWN_ARROW,  0,             0},    /* C11 */
-	{0,            0,              0,              0,            0,          KEY_RIGHT_ARROW, 0,             0},    /* C12 */
+	/*  R0, R1, R2, R3, R4, R5, R6, R7 */
+	/* C0 + OC13 + C14 */
+	{HID_KEY_GUI_LEFT, HID_KEY_NONE, HID_KEY_ARROW_LEFT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_RIGHT, HID_KEY_CONTROL_LEFT, HID_KEY_NONE},
+	/* C1 */
+	{HID_KEY_Q, HID_KEY_TAB, HID_KEY_A, HID_KEY_ESCAPE, HID_KEY_Z, HID_KEY_NONE, HID_KEY_GRAVE, HID_KEY_1},
+	/* C2 */
+	{HID_KEY_W, HID_KEY_CAPS_LOCK, HID_KEY_S, HID_KEY_NONE, HID_KEY_X, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_2},
+	/* C3 */
+	{HID_KEY_E, HID_KEY_NONE, HID_KEY_D, HID_KEY_NONE, HID_KEY_C, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_3},
+	/* C4 */
+	{HID_KEY_R, HID_KEY_T, HID_KEY_F, HID_KEY_G, HID_KEY_V, HID_KEY_B, HID_KEY_5, HID_KEY_4},
+	/* C5 */
+	{HID_KEY_U, HID_KEY_Y, HID_KEY_J, HID_KEY_H, HID_KEY_M, HID_KEY_N, HID_KEY_6, HID_KEY_7},
+	/* C6 */
+	{HID_KEY_I, HID_KEY_BRACKET_RIGHT, HID_KEY_K, HID_KEY_NONE, HID_KEY_COMMA, HID_KEY_NONE, HID_KEY_EQUAL, HID_KEY_8},
+	/* C7 + C15 */
+	{HID_KEY_O, HID_KEY_SHIFT_LEFT, HID_KEY_L, HID_KEY_NONE, HID_KEY_PERIOD, HID_KEY_SHIFT_RIGHT, HID_KEY_NONE, HID_KEY_9},
+	/* C8 */
+	{HID_KEY_P, HID_KEY_BRACKET_LEFT, HID_KEY_SEMICOLON, HID_KEY_APOSTROPHE, HID_KEY_NONE, HID_KEY_SLASH, HID_KEY_MINUS/*-*/, HID_KEY_0},
+	/* C9 */
+	{KEY_FN_R, HID_KEY_NONE, KEY_FN_L, HID_KEY_ALT_LEFT, HID_KEY_NONE, HID_KEY_ALT_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C10 + C13 */
+	{HID_KEY_NONE, HID_KEY_BACKSPACE, HID_KEY_BACKSLASH, HID_KEY_NONE, HID_KEY_RETURN, HID_KEY_GUI_RIGHT, HID_KEY_DELETE, HID_KEY_NONE},
+	/* C11 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_SPACE, HID_KEY_NONE, HID_KEY_ARROW_DOWN, HID_KEY_NONE, HID_KEY_NONE},
+	/* C12 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
 };
 
+int r_fn_minila_matrix[13][8] = { /* reduced FN minila matrix */
+	/*  R0, R1, R2, R3, R4, R5, R6, R7 */
+	/* C0 + OC13 + C14 */
+	{HID_KEY_GUI_LEFT, HID_KEY_NONE, HID_KEY_ARROW_LEFT, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_RIGHT, HID_KEY_CONTROL_LEFT, HID_KEY_NONE},
+	/* C1 */
+	{HID_KEY_Q, HID_KEY_TAB, HID_KEY_A, HID_KEY_ESCAPE, HID_KEY_Z, HID_KEY_NONE, HID_KEY_GRAVE, HID_KEY_F1},
+	/* C2 */
+	{HID_KEY_W, HID_KEY_CAPS_LOCK, HID_KEY_ARROW_LEFT, HID_KEY_NONE, HID_KEY_X, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_F2},
+	/* C3 */
+	{HID_KEY_ARROW_UP, HID_KEY_NONE, HID_KEY_ARROW_DOWN, HID_KEY_NONE, HID_KEY_C, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_F3},
+	/* C4 */
+	{HID_KEY_R, HID_KEY_T, HID_KEY_ARROW_RIGHT, HID_KEY_G, HID_KEY_V, HID_KEY_B, HID_KEY_F5, HID_KEY_F4},
+	/* C5 */
+	{HID_KEY_U, HID_KEY_Y, HID_KEY_INSERT, HID_KEY_H, HID_KEY_DELETE, HID_KEY_N, HID_KEY_F6, HID_KEY_F7},
+	/* C6 */
+	{HID_KEY_PRINT_SCREEN, HID_KEY_BRACKET_RIGHT, HID_KEY_HOME, HID_KEY_NONE, HID_KEY_END, HID_KEY_NONE, HID_KEY_F12, HID_KEY_F8},
+	/* C7 + C15 */
+	{HID_KEY_SCROLL_LOCK, HID_KEY_SHIFT_LEFT, HID_KEY_PAGE_UP, HID_KEY_NONE, HID_KEY_PAGE_DOWN, HID_KEY_SHIFT_RIGHT, HID_KEY_NONE, HID_KEY_F9},
+	/* C8 */
+	{HID_KEY_PAUSE, HID_KEY_BRACKET_LEFT, HID_KEY_BACKSPACE, HID_KEY_APOSTROPHE, HID_KEY_NONE, HID_KEY_SLASH, HID_KEY_F11/*-*/, HID_KEY_F10},
+	/* C9 */
+	{KEY_FN_R, HID_KEY_NONE, KEY_FN_L, HID_KEY_ALT_LEFT, HID_KEY_NONE, HID_KEY_ALT_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+	/* C10 + C13 */
+	{HID_KEY_NONE, HID_KEY_BACKSPACE, HID_KEY_BACKSLASH, HID_KEY_NONE, HID_KEY_RETURN, HID_KEY_GUI_RIGHT, HID_KEY_DELETE, HID_KEY_NONE},
+	/* C11 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_SPACE, HID_KEY_NONE, HID_KEY_ARROW_DOWN, HID_KEY_NONE, HID_KEY_NONE},
+	/* C12 */
+	{HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_NONE, HID_KEY_ARROW_RIGHT, HID_KEY_NONE, HID_KEY_NONE},
+};
 
 /* minila's matrix -> k375s matrix (row<<4|col) */
