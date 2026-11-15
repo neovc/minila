@@ -77,6 +77,41 @@ int main(void)
 	}
 
 	fprintf(fp, "};\n");
+
+	fprintf(fp, "\nuint8_t\nmr_minila_k375s[11][8] =\n{\n");
+	for (i = 0; i < 11; i ++) {
+		fprintf(fp, "\t");
+		for (j = 0; j < 8; j ++) {
+			k = find_match(mr_minila_matrix[i][j]);
+			if (j == 7)
+				fprintf(fp, "0x%0X,", k);
+			else
+				fprintf(fp, "0x%0X, ", k);
+			if (k == 0 && mr_minila_matrix[i][j] != 0) {
+				printf("can't find match for mr_minila[%d][%d]\n", i+1, j+1);
+			}
+		}
+		fprintf(fp, "\n");
+	}
+	fprintf(fp, "};\n\n");
+
+	fprintf(fp, "uint8_t\nmr_fn_minila_k375s[11][8] =\n{\n");
+	for (i = 0; i < 11; i ++) {
+		fprintf(fp, "\t");
+		for (j = 0; j < 8; j ++) {
+			k = find_match(mr_fn_minila_matrix[i][j]);
+			if (j == 7)
+				fprintf(fp, "0x%0X,", k);
+			else
+				fprintf(fp, "0x%0X, ", k);
+			if (k == 0 && mr_fn_minila_matrix[i][j] != 0) {
+				printf("can't find match for mr_fn_minila[%d][%d]\n", i+1, j+1);
+			}
+		}
+		fprintf(fp, "\n");
+	}
+
+	fprintf(fp, "};\n");
 	fclose(fp);
 	return 0;
 }
