@@ -94,6 +94,29 @@ mr_fn_minila_k375s[11][8] =
 	{0x0, 0x73, 0x62, 0x0, 0x53, 0x0, 0x34, 0x0},
 };
 
+typedef struct {
+       uint32_t gpio, pin;
+} k375_pin;
+
+/* read pins from k375s, PB3-PB15 */
+k375_pin k375_read_pins[13] =
+{
+	{GPIOB, GPIO3}, {GPIOB, GPIO4}, {GPIOB, GPIO5}, {GPIOB, GPIO6},
+	{GPIOB, GPIO7}, {GPIOB, GPIO8}, {GPIOB, GPIO9}, {GPIOB, GPIO10},
+	{GPIOB, GPIO11}, {GPIOB, GPIO12}, {GPIOB, GPIO13}, {GPIOB, GPIO14},
+	{GPIOB, GPIO15},
+};
+
+/* write pins to k375s, PA0-PA7, PB0-PB1 */
+k375_pin k375_write_pins[10] =
+{
+	{GPIOA, GPIO0}, {GPIOA, GPIO1}, {GPIOA, GPIO2}, {GPIOA, GPIO3}, {GPIOA, GPIO4},
+	{GPIOA, GPIO5}, {GPIOA, GPIO6}, {GPIOA, GPIO7}, {GPIOB, GPIO0}, {GPIOB, GPIO1},
+};
+
+void pullup_all_write_pins(void);
+void pulldown_write_pins(uint16_t);
+
 extern const struct rcc_clock_scale rcc_hsi_configs[];
 extern unsigned __app_size__, __app_start__;
 
@@ -104,6 +127,8 @@ int k375s_is_idle = 0;
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
 uint8_t get_boot_cause(void);
+
+int is_k375s_idle(void);
 
 #define MAX_ARGS 10
 #define USART_CONSOLE USART1
@@ -384,6 +409,38 @@ usart1_cmd_handler(void *args)
 	}
 }
 
+int
+is_k375s_idle(void)
+{
+	/* k375s is idle when all read pin is low voltage */
+	return (0 == gpio_get(k375_read_pins[0].gpio,
+				k375_read_pins[0].pin | k375_read_pins[1].pin | k375_read_pins[2].pin | k375_read_pins[3].pin | k375_read_pins[4].pin |
+				k375_read_pins[5].pin | k375_read_pins[6].pin | k375_read_pins[7].pin | k375_read_pins[8].pin | k375_read_pins[9].pin |
+				k375_read_pins[10].pin | k375_read_pins[11].pin | k375_read_pins[12].pin));
+
+}
+
+void
+pullup_all_write_pins(void)
+{
+	/* pull up all write pins */
+	gpio_set(k375_write_pins[0].gpio,
+			k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
+			k375_write_pins[4].pin | k375_write_pins[5].pin | k375_write_pins[6].pin | k375_write_pins[7].pin);
+	gpio_set(k375_write_pins[8].gpio, k375_write_pins[8].pin | k375_write_pins[9].pin);
+}
+
+void
+pulldown_write_pins(uint16_t pins)
+{
+	if (pins != 0) {
+		if (pins & 0xff)
+			gpio_clear(k375_write_pins[0].gpio, pins & 0xff);
+		if (pins & 0x300)
+			gpio_clear(k375_write_pins[8].gpio, (pins & 0x300) >> 8);
+	}
+}
+
 static void
 init_task(void *unused)
 {
@@ -394,10 +451,6 @@ init_task(void *unused)
 	while (1) {
 		if (feed_iwdg)
 			iwdg_reset(); /* feed iwdg, reset IWDG */
-		/* k375s is idle when all read pin is low voltage */
-		k375s_is_idle = (0 == gpio_get(GPIOB,
-			GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
-			GPIO10 | GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15));
 
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
@@ -491,6 +544,7 @@ exti2_3_isr(void)
 	exti_reset_request(EXTI3);
 }
 
+#if 0
 void
 exti4_15_isr(void)
 {
@@ -502,26 +556,7 @@ exti4_15_isr(void)
 	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
-
-typedef struct {
-       uint32_t gpio, pin;
-} k375_pin;
-
-/* read pins from k375s, PB3-PB15 */
-k375_pin k375_read[13] =
-{
-	{GPIOB, GPIO3}, {GPIOB, GPIO4}, {GPIOB, GPIO5}, {GPIOB, GPIO6},
-	{GPIOB, GPIO7}, {GPIOB, GPIO8}, {GPIOB, GPIO9}, {GPIOB, GPIO10},
-	{GPIOB, GPIO11}, {GPIOB, GPIO12}, {GPIOB, GPIO13}, {GPIOB, GPIO14},
-	{GPIOB, GPIO15},
-};
-
-/* write pins to k375s, PA0-PA7, PB0-PB1 */
-k375_pin k375_write[10] =
-{
-	{GPIOA, GPIO0}, {GPIOA, GPIO1}, {GPIOA, GPIO2}, {GPIOA, GPIO3}, {GPIOA, GPIO4},
-	{GPIOA, GPIO5}, {GPIOA, GPIO6}, {GPIOA, GPIO7}, {GPIOB, GPIO0}, {GPIOB, GPIO1},
-};
+#endif
 
 void
 setup_k375s_pins(void)
@@ -539,15 +574,20 @@ setup_k375s_pins(void)
 	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1);
 
-	/* pull up all write pins */
-	gpio_set(GPIOA, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-	gpio_set(GPIOB, GPIO0 | GPIO1);
+	pullup_all_write_pins();
 
 	/* setup EXTI interrupts */
 	rcc_periph_clock_enable(RCC_SYSCFG);
 	exti_select_source(EXTI3, GPIOB);
 	exti_set_trigger(EXTI3, EXTI_TRIGGER_FALLING);
 
+	/* can't has high priority than MAX_SYSCALL_INTERRUPT_PRIORITY */
+	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
+	nvic_enable_irq(NVIC_EXTI2_3_IRQ);
+
+	exti_enable_request(EXTI3);
+
+#if 0
 	exti_select_source(EXTI4, GPIOB);
 	exti_set_trigger(EXTI4, EXTI_TRIGGER_FALLING);
 
@@ -584,14 +624,12 @@ setup_k375s_pins(void)
 	exti_select_source(EXTI15, GPIOB);
 	exti_set_trigger(EXTI15, EXTI_TRIGGER_FALLING);
 
-	/* can't has high priority than MAX_SYSCALL_INTERRUPT_PRIORITY */
-	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
-	nvic_enable_irq(NVIC_EXTI2_3_IRQ);
 	nvic_set_priority(NVIC_EXTI4_15_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
 	nvic_enable_irq(NVIC_EXTI4_15_IRQ);
 
-	exti_enable_request(EXTI3 | EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
+	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+#endif
 }
 
 int
