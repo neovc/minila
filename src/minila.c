@@ -115,6 +115,7 @@ k375_pin k375_write_pins[10] =
 };
 
 void pullup_all_write_pins(void);
+void pulldown_all_write_pins(void);
 void pulldown_write_pins(uint16_t);
 
 extern const struct rcc_clock_scale rcc_hsi_configs[];
@@ -122,7 +123,9 @@ extern unsigned __app_size__, __app_start__;
 
 uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
-int k375s_is_idle = 0;
+int k375s_is_idle = 0, key_pressed = 0;
+
+uint16_t k375s_output[13];
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
@@ -135,6 +138,7 @@ int is_k375s_idle(void);
 
 #define IRQ2NVIC_PRIOR(x)        ((x)<<4)
 void help_cmd(int argc, char **argv);
+void test_cmd(int argc, char **argv);
 
 static void
 setup_usart1(void)
@@ -344,6 +348,10 @@ const command_t gosh_cmds[] = {
 		.handler = help_cmd,
 	},
 	{
+		.name = "test",
+		.handler = test_cmd,
+	},
+	{
 		.name = "reset",
 		.handler = reset_cmd,
 	},
@@ -431,6 +439,16 @@ pullup_all_write_pins(void)
 }
 
 void
+pulldown_all_write_pins(void)
+{
+	/* pull up all write pins */
+	gpio_clear(k375_write_pins[0].gpio,
+			k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
+			k375_write_pins[4].pin | k375_write_pins[5].pin | k375_write_pins[6].pin | k375_write_pins[7].pin);
+	gpio_clear(k375_write_pins[8].gpio, k375_write_pins[8].pin | k375_write_pins[9].pin);
+}
+
+void
 pulldown_write_pins(uint16_t pins)
 {
 	if (pins != 0) {
@@ -439,6 +457,41 @@ pulldown_write_pins(uint16_t pins)
 		if (pins & 0x300)
 			gpio_clear(k375_write_pins[8].gpio, (pins & 0x300) >> 8);
 	}
+}
+
+void
+handle_k375s_read_request(void)
+{
+	uint16_t kk[13], i;
+	if (key_pressed == 0)
+		return;
+	memcpy(kk, k375s_output, 13 * sizeof(uint16_t));
+	key_pressed = 0;
+	pullup_all_write_pins();
+	pulldown_write_pins(kk[0]);
+	for (i = 1; i < 13; i ++) {
+		while (gpio_get(k375_read_pins[i].gpio, k375_read_pins[i].pin));
+		/* next read pin is pull down */
+		pullup_all_write_pins();
+		pulldown_write_pins(kk[i]);
+	}
+}
+
+void
+test_cmd(int argc, char **argv)
+{
+	memset(k375s_output, 0, 13 * sizeof(uint16_t));
+
+	k375s_output[4] = (1 << 8); /* 'M' */
+
+	k375s_output[5] = (1 << 3); /* 'E' */
+
+	k375s_output[12] = (1 << 9); /* Left Shift */
+
+	key_pressed = 1;
+
+	if (is_k375s_idle())
+		pulldown_all_write_pins();
 }
 
 static void
@@ -542,6 +595,7 @@ void
 exti2_3_isr(void)
 {
 	exti_reset_request(EXTI3);
+	handle_k375s_read_request();
 }
 
 #if 0
