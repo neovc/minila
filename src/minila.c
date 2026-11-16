@@ -479,6 +479,49 @@ _write(int file, char *ptr, int len)
 	return -1;
 }
 
+typedef struct {
+       uint32_t gpio, pin;
+} k375_pin;
+
+/* read pins from k375s, PB3-PB15 */
+k375_pin k375_read[13] =
+{
+	{GPIOB, GPIO3}, {GPIOB, GPIO4}, {GPIOB, GPIO5}, {GPIOB, GPIO6},
+	{GPIOB, GPIO7}, {GPIOB, GPIO8}, {GPIOB, GPIO9}, {GPIOB, GPIO10},
+	{GPIOB, GPIO11}, {GPIOB, GPIO12}, {GPIOB, GPIO13}, {GPIOB, GPIO14},
+	{GPIOB, GPIO15},
+};
+
+/* write pins to k375s, PA0-PA7, PB0-PB1 */
+k375_pin k375_write[10] =
+{
+	{GPIOA, GPIO0}, {GPIOA, GPIO1}, {GPIOA, GPIO2}, {GPIOA, GPIO3}, {GPIOA, GPIO4},
+	{GPIOA, GPIO5}, {GPIOA, GPIO6}, {GPIOA, GPIO7}, {GPIOB, GPIO0}, {GPIOB, GPIO1},
+};
+
+void
+setup_k375s_pins(void)
+{
+	/* read pins, PB3-PB15 */
+	rcc_periph_clock_enable(RCC_GPIOB);
+
+	gpio_mode_setup(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+			GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
+			GPIO10 | GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+
+	/* write pins, PA0-PA7, PB0-PB1 */
+	rcc_periph_clock_enable(RCC_GPIOA);
+
+	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1);
+
+	/* pull up all write pins */
+	gpio_set(GPIOA, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
+	gpio_set(GPIOB, GPIO0 | GPIO1);
+
+	/* setup EXTI interrupts */
+}
+
 int
 main(void)
 {
