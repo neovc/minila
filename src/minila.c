@@ -99,8 +99,7 @@ extern unsigned __app_size__, __app_start__;
 
 uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
-int uptime = 0;
-int k375s_read_cnt = 0;
+int k375s_is_idle = 0;
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
@@ -299,6 +298,7 @@ typedef struct {
 void
 uptime_cmd(int argc, char **argv)
 {
+	int uptime;
 	uptime = xTaskGetTickCount() / (pdMS_TO_TICKS(1000));
 	printf("built at %s %s, up %d secs, FreeRTOS %s, boot cause #%d\n", __DATE__, __TIME__, uptime, tskKERNEL_VERSION_NUMBER, boot_cause);
 }
@@ -394,8 +394,11 @@ init_task(void *unused)
 	while (1) {
 		if (feed_iwdg)
 			iwdg_reset(); /* feed iwdg, reset IWDG */
-		printf("k375s #%d\n", k375s_read_cnt);
-		k375s_read_cnt = 0;
+		/* k375s is idle when all read pin is low voltage */
+		k375s_is_idle = (0 == gpio_get(GPIOB,
+			GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7 | GPIO8 | GPIO9 |
+			GPIO10 | GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15));
+
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
@@ -486,7 +489,6 @@ void
 exti2_3_isr(void)
 {
 	exti_reset_request(EXTI3);
-	k375s_read_cnt ++;
 }
 
 void
@@ -499,7 +501,6 @@ exti4_15_isr(void)
 
 	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
-	k375s_read_cnt ++;
 }
 
 typedef struct {
