@@ -100,6 +100,7 @@ extern unsigned __app_size__, __app_start__;
 uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
 int uptime = 0;
+int k375s_read_cnt = 0;
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
@@ -393,7 +394,9 @@ init_task(void *unused)
 	while (1) {
 		if (feed_iwdg)
 			iwdg_reset(); /* feed iwdg, reset IWDG */
-		vTaskDelay(pdMS_TO_TICKS(2000));
+		printf("k375s #%d\n", k375s_read_cnt);
+		k375s_read_cnt = 0;
+		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
 
@@ -479,6 +482,26 @@ _write(int file, char *ptr, int len)
 	return -1;
 }
 
+void
+exti2_3_isr(void)
+{
+	exti_reset_request(EXTI3);
+	k375s_read_cnt ++;
+}
+
+void
+exti4_15_isr(void)
+{
+	uint32_t flag;
+
+	flag = exti_get_flag_status(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
+			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+
+	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
+			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+	k375s_read_cnt ++;
+}
+
 typedef struct {
        uint32_t gpio, pin;
 } k375_pin;
@@ -520,6 +543,54 @@ setup_k375s_pins(void)
 	gpio_set(GPIOB, GPIO0 | GPIO1);
 
 	/* setup EXTI interrupts */
+	rcc_periph_clock_enable(RCC_SYSCFG);
+	exti_select_source(EXTI3, GPIOB);
+	exti_set_trigger(EXTI3, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI4, GPIOB);
+	exti_set_trigger(EXTI4, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI5, GPIOB);
+	exti_set_trigger(EXTI5, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI6, GPIOB);
+	exti_set_trigger(EXTI6, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI7, GPIOB);
+	exti_set_trigger(EXTI7, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI8, GPIOB);
+	exti_set_trigger(EXTI8, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI9, GPIOB);
+	exti_set_trigger(EXTI9, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI10, GPIOB);
+	exti_set_trigger(EXTI10, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI11, GPIOB);
+	exti_set_trigger(EXTI11, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI12, GPIOB);
+	exti_set_trigger(EXTI12, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI13, GPIOB);
+	exti_set_trigger(EXTI13, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI14, GPIOB);
+	exti_set_trigger(EXTI14, EXTI_TRIGGER_FALLING);
+
+	exti_select_source(EXTI15, GPIOB);
+	exti_set_trigger(EXTI15, EXTI_TRIGGER_FALLING);
+
+	/* can't has high priority than MAX_SYSCALL_INTERRUPT_PRIORITY */
+	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
+	nvic_enable_irq(NVIC_EXTI2_3_IRQ);
+	nvic_set_priority(NVIC_EXTI4_15_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
+	nvic_enable_irq(NVIC_EXTI4_15_IRQ);
+
+	exti_enable_request(EXTI3 | EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
+			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
 
 int
@@ -528,6 +599,7 @@ main(void)
 	rcc_clock_setup_pll(&(rcc_hsi_configs[RCC_CLOCK_CONFIG_HSI_32MHZ]));
 	flash_prefetch_enable();
 	setup_usart1();
+	setup_k375s_pins();
 
 	boot_cause = get_boot_cause();
 
