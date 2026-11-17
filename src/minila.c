@@ -20,7 +20,6 @@
 #include <libopencm3/stm32/syscfg.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/i2c.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/usart.h>
 
@@ -768,4 +767,28 @@ get_boot_cause(void)
 		/* other reset */
 		return 0xff;
 	}
+}
+
+void
+setup_tim2_4us(void)
+{
+	rcc_periph_clock_enable(RCC_TIM2);
+	rcc_periph_reset_pulse(RST_TIM2);
+
+	timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+
+	timer_set_prescaler(TIM2, 15); /* 32M/(15+1)=2M */
+
+	timer_set_period(TIM2, 7); /* 8 * 0.5us = 4us */
+
+	timer_enable_counter(TIM2);
+}
+
+/* Precise blocking 4 us delay using the hardware update flag */
+void
+delay_4us(void)
+{
+    timer_set_counter(TIM2, 0);
+    timer_clear_flag(TIM2, TIM_SR_UIF);
+    while (!timer_get_flag(TIM2, TIM_SR_UIF));
 }
