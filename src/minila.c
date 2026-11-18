@@ -117,6 +117,7 @@ k375_pin k375_write_pins[10] =
 
 void pullup_all_write_pins(void);
 void pulldown_all_write_pins(void);
+void compile_k375s_matrix(uint16_t *k);
 
 extern const struct rcc_clock_scale rcc_hsi_configs[];
 extern unsigned __app_size__, __app_start__;
@@ -474,6 +475,24 @@ setup_exti_interrupts(void)
 }
 
 void
+compile_k375s_matrix(uint16_t *k)
+{
+	int i;
+	uint32_t a, b;
+
+	if (k == NULL)
+		return;
+	for (i = 0; i < 13; i ++) {
+		a = ((k[i] & 0xff) << 16) | ((~(k[i] & 0xff)) & 0xff);
+		b = ((k[i] & 0x300) << 8) | ((~((k[i] & 0x300)>>8)) & 0x3);
+		if (debug_mode)
+			printf("#%d: 0x%x, 0x%x, 0x%x\n", i, k[i], a, b);
+		matrix_output[i][0] = a;
+		matrix_output[i][1] = b;
+	}
+}
+
+void
 debug_cmd(int argc, char **argv)
 {
 	debug_mode = 1 - debug_mode;
@@ -493,10 +512,10 @@ void
 test_cmd(int argc, char **argv)
 {
 	int i, j;
-	uint32_t a, b;
 	uint16_t k375s_output[13];
 	memset(k375s_output, 0, 13 * sizeof(uint16_t));
 
+	key_pressed = 0;
 	if (argc >= 3) {
 		i = atoi(argv[1]);
 		j = atoi(argv[2]);
@@ -516,14 +535,7 @@ test_cmd(int argc, char **argv)
 		k375s_output[4] = (1 << 8); /* 'M' */
 	}
 
-	for (i = 0; i < 13; i ++) {
-		a = ((k375s_output[i] & 0xff) << 16) | ((~(k375s_output[i] & 0xff)) & 0xff);
-		b = ((k375s_output[i] & 0x300) << 8) | ((~((k375s_output[i] & 0x300)>>8)) & 0x3);
-		if (debug_mode)
-			printf("#%d: 0x%x, 0x%x, 0x%x\n", i, k375s_output[i], a, b);
-		matrix_output[i][0] = a;
-		matrix_output[i][1] = b;
-	}
+	compile_k375s_matrix(k375s_output);
 
 	if (is_k375s_idle())
 		pulldown_all_write_pins();
