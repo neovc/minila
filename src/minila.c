@@ -487,6 +487,12 @@ test_cmd(int argc, char **argv)
 			j = atoi(argv[4]);
 			k375s_output[i-1] |= (1 << (j-14));
 		}
+
+		if (argc >= 7) {
+			i = atoi(argv[5]);
+			j = atoi(argv[6]);
+			k375s_output[i-1] |= (1 << (j-14));
+		}
 	} else {
 		k375s_output[4] = (1 << 8); /* 'M' */
 	}
@@ -501,6 +507,7 @@ test_cmd(int argc, char **argv)
 
 	if (is_k375s_idle())
 		pulldown_all_write_pins();
+
 	key_press_cnt = DEFAULT_REPEAT_CNT;
 	key_press_pin = 0;
 	key_pressed = 1;
