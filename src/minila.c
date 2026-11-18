@@ -466,6 +466,14 @@ pulldown_write_pins(int i)
 }
 
 void
+setup_exti_interrupts(void)
+{
+	exti_enable_request(EXTI3);
+
+	exti_disable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 | EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+}
+
+void
 debug_cmd(int argc, char **argv)
 {
 	debug_mode = 1 - debug_mode;
@@ -523,6 +531,8 @@ test_cmd(int argc, char **argv)
 	key_press_cnt = DEFAULT_REPEAT_CNT;
 	key_press_pin = 0;
 	key_pressed = 1;
+
+	setup_exti_interrupts();
 
 	vTaskDelay(pdMS_TO_TICKS(100));
 }
