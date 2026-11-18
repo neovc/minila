@@ -115,22 +115,23 @@ k375_pin k375_write_pins[10] =
 
 void pullup_all_write_pins(void);
 void pulldown_all_write_pins(void);
-void pulldown_write_pins(uint16_t);
 
 extern const struct rcc_clock_scale rcc_hsi_configs[];
 extern unsigned __app_size__, __app_start__;
 
 uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
-int k375s_is_idle = 0, key_pressed = 0;
 
-uint16_t k375s_output[13];
+volatile int key_pressed = 0, key_press_cnt = 0, key_press_pin;
+volatile uint32_t matrix_output[13][2];
+int mismatch_cnt = 0, match_cnt = 0;
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
 uint8_t get_boot_cause(void);
 
 int is_k375s_idle(void);
+int delay_cnt = 10;
 
 #define MAX_ARGS 10
 #define USART_CONSOLE USART1
@@ -138,6 +139,8 @@ int is_k375s_idle(void);
 #define IRQ2NVIC_PRIOR(x)        ((x)<<4)
 void help_cmd(int argc, char **argv);
 void test_cmd(int argc, char **argv);
+void delay_cmd(int argc, char **argv);
+void idle_cmd(int argc, char **argv);
 
 static void
 setup_usart1(void)
@@ -328,7 +331,7 @@ uptime_cmd(int argc, char **argv)
 {
 	int uptime;
 	uptime = xTaskGetTickCount() / (pdMS_TO_TICKS(1000));
-	printf("built at %s %s, up %d secs, FreeRTOS %s, boot cause #%d\n", __DATE__, __TIME__, uptime, tskKERNEL_VERSION_NUMBER, boot_cause);
+	printf("up %d secs, boot cause #%d\n", uptime, boot_cause);
 }
 
 void
@@ -351,12 +354,28 @@ const command_t gosh_cmds[] = {
 		.handler = test_cmd,
 	},
 	{
+		.name = "delay",
+		.handler = delay_cmd,
+	},
+	{
+		.name = "idle",
+		.handler = idle_cmd,
+	},
+	{
 		.name = "reset",
 		.handler = reset_cmd,
 	},
 };
 
 #define CMDS_SIZE (sizeof(gosh_cmds) / sizeof(gosh_cmds[0]))
+
+void
+delay_cmd(int argc, char **argv)
+{
+	if (argc > 1)
+		delay_cnt = atoi(argv[1]);
+	printf("delay #%d\n", delay_cnt);
+}
 
 void
 help_cmd(int argc, char **argv)
@@ -431,66 +450,75 @@ void
 pullup_all_write_pins(void)
 {
 	/* pull up all write pins */
-	gpio_set(k375_write_pins[0].gpio,
-			k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
+	GPIO_BSRR(k375_write_pins[0].gpio) = (k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
 			k375_write_pins[4].pin | k375_write_pins[5].pin | k375_write_pins[6].pin | k375_write_pins[7].pin);
-	gpio_set(k375_write_pins[8].gpio, k375_write_pins[8].pin | k375_write_pins[9].pin);
+	GPIO_BSRR(k375_write_pins[8].gpio) = (k375_write_pins[8].pin | k375_write_pins[9].pin);
 }
 
 void
 pulldown_all_write_pins(void)
 {
 	/* pull up all write pins */
-	gpio_clear(k375_write_pins[0].gpio,
-			k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
-			k375_write_pins[4].pin | k375_write_pins[5].pin | k375_write_pins[6].pin | k375_write_pins[7].pin);
-	gpio_clear(k375_write_pins[8].gpio, k375_write_pins[8].pin | k375_write_pins[9].pin);
+	GPIO_BSRR(k375_write_pins[0].gpio) = (k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
+			k375_write_pins[4].pin | k375_write_pins[5].pin | k375_write_pins[6].pin | k375_write_pins[7].pin) << 16;
+	GPIO_BSRR(k375_write_pins[8].gpio) = (k375_write_pins[8].pin | k375_write_pins[9].pin) << 16;
+}
+
+static inline void
+pulldown_write_pins(int i)
+{
+	GPIO_BSRR(k375_write_pins[0].gpio) = matrix_output[i][0];
+	GPIO_BSRR(k375_write_pins[8].gpio) = matrix_output[i][1];
 }
 
 void
-pulldown_write_pins(uint16_t pins)
+idle_cmd(int argc, char **argv)
 {
-	if (pins != 0) {
-		if (pins & 0xff)
-			gpio_clear(k375_write_pins[0].gpio, pins & 0xff);
-		if (pins & 0x300)
-			gpio_clear(k375_write_pins[8].gpio, (pins & 0x300) >> 8);
-	}
-}
-
-void
-handle_k375s_read_request(void)
-{
-	uint16_t kk[13], i;
-	if (key_pressed == 0)
-		return;
-	memcpy(kk, k375s_output, 13 * sizeof(uint16_t));
-	key_pressed = 0;
-	pullup_all_write_pins();
-	pulldown_write_pins(kk[0]);
-	for (i = 1; i < 13; i ++) {
-		while (gpio_get(k375_read_pins[i].gpio, k375_read_pins[i].pin));
-		/* next read pin is pull down */
-		pullup_all_write_pins();
-		pulldown_write_pins(kk[i]);
+	if (is_k375s_idle()) {
+		console_puts("idle\n");
+	} else {
+		console_puts("not idle\n");
 	}
 }
 
 void
 test_cmd(int argc, char **argv)
 {
+	int i, j;
+	uint32_t a, b;
+	uint16_t k375s_output[13];
 	memset(k375s_output, 0, 13 * sizeof(uint16_t));
 
-	k375s_output[4] = (1 << 8); /* 'M' */
+	if (argc >= 3) {
+		i = atoi(argv[1]);
+		j = atoi(argv[2]);
+		k375s_output[i-1] |= (1 << (j-14));
+		if (argc >= 5) {
+			i = atoi(argv[3]);
+			j = atoi(argv[4]);
+			k375s_output[i-1] |= (1 << (j-14));
+		}
+	} else {
+		k375s_output[4] = (1 << 8); /* 'M' */
+	}
 
-	k375s_output[5] = (1 << 3); /* 'E' */
-
-	k375s_output[12] = (1 << 9); /* Left Shift */
-
-	key_pressed = 1;
+	for (i = 0; i < 13; i ++) {
+		a = ((k375s_output[i] & 0xff) << 16) | ((~(k375s_output[i] & 0xff)) & 0xff);
+		b = ((k375s_output[i] & 0x300) << 8) | ((~((k375s_output[i] & 0x300)>>8)) & 0x3);
+		printf("#%d: 0x%x, 0x%x, 0x%x\n", i, k375s_output[i], a, b);
+		matrix_output[i][0] = a;
+		matrix_output[i][1] = b;
+	}
 
 	if (is_k375s_idle())
 		pulldown_all_write_pins();
+	key_press_cnt = delay_cnt;
+	key_press_pin = 0;
+	mismatch_cnt = match_cnt = 0;
+	key_pressed = 1;
+
+	vTaskDelay(pdMS_TO_TICKS(100));
+	printf("match cnt %d/%d\n", mismatch_cnt, match_cnt);
 }
 
 static void
@@ -593,23 +621,48 @@ _write(int file, char *ptr, int len)
 void
 exti2_3_isr(void)
 {
+	if (key_pressed) {
+		pulldown_write_pins(0);
+		key_press_pin = 15; /* next exti is EXIT15 */
+		key_press_cnt --;
+		match_cnt ++;
+		if (key_press_cnt <= 0)
+			key_pressed = 0;
+	}
 	exti_reset_request(EXTI3);
-	handle_k375s_read_request();
 }
 
-#if 0
+void
+handle_k375s_read_request(void)
+{
+	uint32_t f = EXTI_PR;
+
+	if (f & EXTI13) {
+		key_press_pin = 13;
+	} else if (f & EXTI10) {
+		key_press_pin = 10;
+	} else if (f & EXTI7) {
+		key_press_pin = 7;
+	}
+
+	if (key_press_pin > 3) {
+		if ((f & (1U << key_press_pin)) == 0) {
+			mismatch_cnt ++;
+		} else {
+			match_cnt ++;
+			pulldown_write_pins(key_press_pin - 3);
+		}
+		key_press_pin --;
+	}
+}
+
 void
 exti4_15_isr(void)
 {
-	uint32_t flag;
-
-	flag = exti_get_flag_status(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
-			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
-
+	if (key_pressed) handle_k375s_read_request();
 	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
-#endif
 
 void
 setup_k375s_pins(void)
@@ -624,8 +677,11 @@ setup_k375s_pins(void)
 	/* write pins, PA0-PA7, PB0-PB1 */
 	rcc_periph_clock_enable(RCC_GPIOA);
 
-	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
-	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1);
+	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
+
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0 | GPIO1);
+	gpio_set_output_options(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO0 | GPIO1);
 
 	pullup_all_write_pins();
 
@@ -635,54 +691,21 @@ setup_k375s_pins(void)
 	exti_set_trigger(EXTI3, EXTI_TRIGGER_FALLING);
 
 	/* can't has high priority than MAX_SYSCALL_INTERRUPT_PRIORITY */
-	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
+	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY));
 	nvic_enable_irq(NVIC_EXTI2_3_IRQ);
 
 	exti_enable_request(EXTI3);
 
-#if 0
-	exti_select_source(EXTI4, GPIOB);
-	exti_set_trigger(EXTI4, EXTI_TRIGGER_FALLING);
+	exti_select_source(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI8 | EXTI9 | EXTI10 |
+			EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15, GPIOB);
 
-	exti_select_source(EXTI5, GPIOB);
-	exti_set_trigger(EXTI5, EXTI_TRIGGER_FALLING);
+	exti_set_trigger(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI8 | EXTI9 | EXTI10 |
+			EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15, EXTI_TRIGGER_FALLING);
 
-	exti_select_source(EXTI6, GPIOB);
-	exti_set_trigger(EXTI6, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI7, GPIOB);
-	exti_set_trigger(EXTI7, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI8, GPIOB);
-	exti_set_trigger(EXTI8, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI9, GPIOB);
-	exti_set_trigger(EXTI9, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI10, GPIOB);
-	exti_set_trigger(EXTI10, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI11, GPIOB);
-	exti_set_trigger(EXTI11, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI12, GPIOB);
-	exti_set_trigger(EXTI12, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI13, GPIOB);
-	exti_set_trigger(EXTI13, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI14, GPIOB);
-	exti_set_trigger(EXTI14, EXTI_TRIGGER_FALLING);
-
-	exti_select_source(EXTI15, GPIOB);
-	exti_set_trigger(EXTI15, EXTI_TRIGGER_FALLING);
-
-	nvic_set_priority(NVIC_EXTI4_15_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2));
+	nvic_set_priority(NVIC_EXTI4_15_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY));
 	nvic_enable_irq(NVIC_EXTI4_15_IRQ);
 
-	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
-			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
-#endif
+	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 | EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
 
 int
@@ -767,28 +790,4 @@ get_boot_cause(void)
 		/* other reset */
 		return 0xff;
 	}
-}
-
-void
-setup_tim2_4us(void)
-{
-	rcc_periph_clock_enable(RCC_TIM2);
-	rcc_periph_reset_pulse(RST_TIM2);
-
-	timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-
-	timer_set_prescaler(TIM2, 15); /* 32M/(15+1)=2M */
-
-	timer_set_period(TIM2, 7); /* 8 * 0.5us = 4us */
-
-	timer_enable_counter(TIM2);
-}
-
-/* Precise blocking 4 us delay using the hardware update flag */
-void
-delay_4us(void)
-{
-    timer_set_counter(TIM2, 0);
-    timer_clear_flag(TIM2, TIM_SR_UIF);
-    while (!timer_get_flag(TIM2, TIM_SR_UIF));
 }
