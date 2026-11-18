@@ -129,7 +129,7 @@ uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
 
 uint32_t exti_array[13] = {EXTI3, EXTI4, EXTI5, EXTI6, EXTI7, EXTI8, EXTI9, EXTI10, EXTI11, EXTI12, EXTI13, EXTI14, EXTI15};
-volatile uint8_t key_pressed = 0, key_press_cnt = 0, key_press_pin;
+volatile uint8_t key_pressed = 0, key_press_cnt = 0, key_press_pin, clear_all_line = 0;
 volatile uint32_t matrix_output[13][2], next_exti = 0;
 uint16_t g_key_buffer[KEY_BUFFER_SIZE+1][13];
 uint8_t g_key_idx = 0, g_key_cnt = 0;
@@ -519,6 +519,8 @@ send_k375s_key(void)
 {
 	if (g_key_idx >= g_key_cnt) {
 		g_key_idx = g_key_cnt = 0;
+		clear_all_line = 1;
+		exti_enable_request(EXTI14);
 		return;
 	}
 	compile_k375s_matrix((uint16_t *)(&(g_key_buffer[g_key_idx][0])));
@@ -751,7 +753,14 @@ exti4_15_isr(void)
 {
 	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
-	if (key_pressed && key_press_pin > 0) {
+
+	if (clear_all_line) {
+		/* enter idle mode */
+		clear_all_line = 0;
+		exti_disable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
+			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+		pullup_all_write_pins();
+	} else if (key_pressed && key_press_pin > 0) {
 		pulldown_write_pins(key_press_pin);
 		exti_disable_request(exti_array[key_press_pin]);
 		exti_enable_request(exti_array[--key_press_pin]);
