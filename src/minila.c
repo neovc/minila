@@ -133,7 +133,7 @@ uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
 uint8_t get_boot_cause(void);
 
 int is_k375s_idle(void);
-uint8_t repeat_cnt = 5;
+uint8_t debug_mode = 0;
 
 #define MAX_ARGS 10
 #define USART_CONSOLE USART1
@@ -142,6 +142,7 @@ uint8_t repeat_cnt = 5;
 void help_cmd(int argc, char **argv);
 void test_cmd(int argc, char **argv);
 void idle_cmd(int argc, char **argv);
+void debug_cmd(int argc, char **argv);
 
 static void
 setup_usart1(void)
@@ -359,6 +360,10 @@ const command_t gosh_cmds[] = {
 		.handler = idle_cmd,
 	},
 	{
+		.name = "debug",
+		.handler = debug_cmd,
+	},
+	{
 		.name = "reset",
 		.handler = reset_cmd,
 	},
@@ -461,6 +466,12 @@ pulldown_write_pins(int i)
 }
 
 void
+debug_cmd(int argc, char **argv)
+{
+	debug_mode = 1 - debug_mode;
+}
+
+void
 idle_cmd(int argc, char **argv)
 {
 	if (is_k375s_idle()) {
@@ -500,7 +511,8 @@ test_cmd(int argc, char **argv)
 	for (i = 0; i < 13; i ++) {
 		a = ((k375s_output[i] & 0xff) << 16) | ((~(k375s_output[i] & 0xff)) & 0xff);
 		b = ((k375s_output[i] & 0x300) << 8) | ((~((k375s_output[i] & 0x300)>>8)) & 0x3);
-		printf("#%d: 0x%x, 0x%x, 0x%x\n", i, k375s_output[i], a, b);
+		if (debug_mode)
+			printf("#%d: 0x%x, 0x%x, 0x%x\n", i, k375s_output[i], a, b);
 		matrix_output[i][0] = a;
 		matrix_output[i][1] = b;
 	}
