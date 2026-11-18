@@ -25,6 +25,8 @@
 
 #include "keyboard.h"
 
+#define DEFAULT_REPEAT_CNT 5 // minial is 3
+
 uint8_t
 r_minila_k375s[13][8] =
 {
@@ -122,16 +124,16 @@ extern unsigned __app_size__, __app_start__;
 uint32_t rom_app_size = 0, app_start = 0;
 uint32_t calc_crc, orig_crc;
 
-volatile int key_pressed = 0, key_press_cnt = 0, key_press_pin;
-volatile uint32_t matrix_output[13][2];
-int mismatch_cnt = 0, match_cnt = 0;
+uint32_t exti_array[13] = {EXTI3, EXTI4, EXTI5, EXTI6, EXTI7, EXTI8, EXTI9, EXTI10, EXTI11, EXTI12, EXTI13, EXTI14, EXTI15};
+volatile uint8_t key_pressed = 0, key_press_cnt = 0, key_press_pin;
+volatile uint32_t matrix_output[13][2], next_exti = 0;
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
 uint8_t get_boot_cause(void);
 
 int is_k375s_idle(void);
-int delay_cnt = 10;
+uint8_t repeat_cnt = 5;
 
 #define MAX_ARGS 10
 #define USART_CONSOLE USART1
@@ -139,7 +141,6 @@ int delay_cnt = 10;
 #define IRQ2NVIC_PRIOR(x)        ((x)<<4)
 void help_cmd(int argc, char **argv);
 void test_cmd(int argc, char **argv);
-void delay_cmd(int argc, char **argv);
 void idle_cmd(int argc, char **argv);
 
 static void
@@ -354,10 +355,6 @@ const command_t gosh_cmds[] = {
 		.handler = test_cmd,
 	},
 	{
-		.name = "delay",
-		.handler = delay_cmd,
-	},
-	{
 		.name = "idle",
 		.handler = idle_cmd,
 	},
@@ -368,14 +365,6 @@ const command_t gosh_cmds[] = {
 };
 
 #define CMDS_SIZE (sizeof(gosh_cmds) / sizeof(gosh_cmds[0]))
-
-void
-delay_cmd(int argc, char **argv)
-{
-	if (argc > 1)
-		delay_cnt = atoi(argv[1]);
-	printf("delay #%d\n", delay_cnt);
-}
 
 void
 help_cmd(int argc, char **argv)
@@ -512,13 +501,11 @@ test_cmd(int argc, char **argv)
 
 	if (is_k375s_idle())
 		pulldown_all_write_pins();
-	key_press_cnt = delay_cnt;
+	key_press_cnt = DEFAULT_REPEAT_CNT;
 	key_press_pin = 0;
-	mismatch_cnt = match_cnt = 0;
 	key_pressed = 1;
 
 	vTaskDelay(pdMS_TO_TICKS(100));
-	printf("match cnt %d/%d\n", mismatch_cnt, match_cnt);
 }
 
 static void
@@ -623,9 +610,9 @@ exti2_3_isr(void)
 {
 	if (key_pressed) {
 		pulldown_write_pins(0);
-		key_press_pin = 15; /* next exti is EXIT15 */
+		key_press_pin = 12; /* next exti is EXIT15 */
 		key_press_cnt --;
-		match_cnt ++;
+		exti_enable_request(exti_array[key_press_pin]);
 		if (key_press_cnt <= 0)
 			key_pressed = 0;
 	}
@@ -633,35 +620,15 @@ exti2_3_isr(void)
 }
 
 void
-handle_k375s_read_request(void)
-{
-	uint32_t f = EXTI_PR;
-
-	if (f & EXTI13) {
-		key_press_pin = 13;
-	} else if (f & EXTI10) {
-		key_press_pin = 10;
-	} else if (f & EXTI7) {
-		key_press_pin = 7;
-	}
-
-	if (key_press_pin > 3) {
-		if ((f & (1U << key_press_pin)) == 0) {
-			mismatch_cnt ++;
-		} else {
-			match_cnt ++;
-			pulldown_write_pins(key_press_pin - 3);
-		}
-		key_press_pin --;
-	}
-}
-
-void
 exti4_15_isr(void)
 {
-	if (key_pressed) handle_k375s_read_request();
 	exti_reset_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+	if (key_pressed && key_press_pin > 0) {
+		pulldown_write_pins(key_press_pin);
+		exti_disable_request(exti_array[key_press_pin]);
+		exti_enable_request(exti_array[--key_press_pin]);
+	}
 }
 
 void
@@ -705,7 +672,7 @@ setup_k375s_pins(void)
 	nvic_set_priority(NVIC_EXTI4_15_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY));
 	nvic_enable_irq(NVIC_EXTI4_15_IRQ);
 
-	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 | EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
+//	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 | EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
 
 int
