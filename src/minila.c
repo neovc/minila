@@ -26,6 +26,7 @@
 #include "keyboard.h"
 
 #define DEFAULT_REPEAT_CNT 5 // minial is 3
+#define KEY_BUFFER_SIZE 5
 
 uint8_t
 r_minila_k375s[13][8] =
@@ -118,6 +119,8 @@ k375_pin k375_write_pins[10] =
 void pullup_all_write_pins(void);
 void pulldown_all_write_pins(void);
 void compile_k375s_matrix(uint16_t *k);
+void send_k375s_key(void);
+void append_global_keys(uint16_t *);
 
 extern const struct rcc_clock_scale rcc_hsi_configs[];
 extern unsigned __app_size__, __app_start__;
@@ -128,6 +131,8 @@ uint32_t calc_crc, orig_crc;
 uint32_t exti_array[13] = {EXTI3, EXTI4, EXTI5, EXTI6, EXTI7, EXTI8, EXTI9, EXTI10, EXTI11, EXTI12, EXTI13, EXTI14, EXTI15};
 volatile uint8_t key_pressed = 0, key_press_cnt = 0, key_press_pin;
 volatile uint32_t matrix_output[13][2], next_exti = 0;
+uint16_t g_key_buffer[KEY_BUFFER_SIZE+1][13];
+uint8_t g_key_idx = 0, g_key_cnt = 0;
 
 int _write(int file, char *ptr, int len);
 uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
@@ -142,6 +147,7 @@ uint8_t debug_mode = 0;
 #define IRQ2NVIC_PRIOR(x)        ((x)<<4)
 void help_cmd(int argc, char **argv);
 void test_cmd(int argc, char **argv);
+void key_cmd(int argc, char **argv);
 void idle_cmd(int argc, char **argv);
 void debug_cmd(int argc, char **argv);
 
@@ -357,6 +363,10 @@ const command_t gosh_cmds[] = {
 		.handler = test_cmd,
 	},
 	{
+		.name = "key",
+		.handler = key_cmd,
+	},
+	{
 		.name = "idle",
 		.handler = idle_cmd,
 	},
@@ -493,6 +503,39 @@ compile_k375s_matrix(uint16_t *k)
 }
 
 void
+append_global_keys(uint16_t *k)
+{
+	if (k == NULL) return;
+
+	if (g_key_cnt > KEY_BUFFER_SIZE) /* drop this key */
+		return;
+
+	memcpy(&(g_key_buffer[g_key_cnt][0]), k, 13 * sizeof(uint16_t));
+	g_key_cnt ++;
+}
+
+void
+send_k375s_key(void)
+{
+	if (g_key_idx >= g_key_cnt) {
+		g_key_idx = g_key_cnt = 0;
+		return;
+	}
+	compile_k375s_matrix((uint16_t *)(&(g_key_buffer[g_key_idx][0])));
+
+	g_key_idx ++;
+
+	if (is_k375s_idle())
+		pulldown_all_write_pins();
+
+	key_press_cnt = DEFAULT_REPEAT_CNT;
+	key_press_pin = 0;
+	key_pressed = 1;
+
+	setup_exti_interrupts();
+}
+
+void
 debug_cmd(int argc, char **argv)
 {
 	debug_mode = 1 - debug_mode;
@@ -545,6 +588,46 @@ test_cmd(int argc, char **argv)
 	key_pressed = 1;
 
 	setup_exti_interrupts();
+
+	vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+void
+key_cmd(int argc, char **argv)
+{
+	int i, j;
+	uint16_t k375s_output[13];
+
+	if (argc < 3)
+		return;
+
+	memset(k375s_output, 0, sizeof(k375s_output));
+
+	key_pressed = 0;
+	if (argc >= 3) {
+		i = atoi(argv[1]);
+		j = atoi(argv[2]);
+		k375s_output[i-1] |= (1 << (j-14));
+		append_global_keys(k375s_output);
+	}
+
+	if (argc >= 5) {
+		i = atoi(argv[3]);
+		j = atoi(argv[4]);
+		memset(k375s_output, 0, sizeof(k375s_output));
+		k375s_output[i-1] |= (1 << (j-14));
+		append_global_keys(k375s_output);
+	}
+
+	if (argc >= 7) {
+		i = atoi(argv[5]);
+		j = atoi(argv[6]);
+		memset(k375s_output, 0, sizeof(k375s_output));
+		k375s_output[i-1] |= (1 << (j-14));
+		append_global_keys(k375s_output);
+	}
+
+	send_k375s_key();
 
 	vTaskDelay(pdMS_TO_TICKS(100));
 }
@@ -651,11 +734,14 @@ exti2_3_isr(void)
 {
 	if (key_pressed) {
 		pulldown_write_pins(0);
-		key_press_pin = 12; /* next exti is EXIT15 */
-		key_press_cnt --;
-		exti_enable_request(exti_array[key_press_pin]);
-		if (key_press_cnt <= 0)
+		if (key_press_cnt <= 0) {
 			key_pressed = 0;
+			send_k375s_key();
+		} else {
+			key_press_pin = 12; /* next exti is EXIT15 */
+			key_press_cnt --;
+			exti_enable_request(exti_array[key_press_pin]);
+		}
 	}
 	exti_reset_request(EXTI3);
 }
