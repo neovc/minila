@@ -802,14 +802,16 @@ static void
 init_task(void *unused)
 {
 	freertos_started = 1;
+	int i = 1;
 
 //	printf("APP CALC 0x%x %s ORIG 0x%x\n", (unsigned int) calc_crc, (calc_crc == orig_crc)?"=":"!=", (unsigned int) orig_crc);
 
 	while (1) {
-		if (feed_iwdg)
+		if ((((i ++) % 500) == 0) && feed_iwdg)
 			iwdg_reset(); /* feed iwdg, reset IWDG */
 
-		vTaskDelay(pdMS_TO_TICKS(500));
+		scan_minila_keys();
+		vTaskDelay(pdMS_TO_TICKS(1));
 	}
 }
 
