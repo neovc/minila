@@ -116,6 +116,23 @@ k375_pin k375_write_pins[10] =
 	{GPIOA, GPIO5}, {GPIOA, GPIO6}, {GPIOA, GPIO7}, {GPIOB, GPIO0}, {GPIOB, GPIO1},
 };
 
+/* C0-C11 -> PA11-PA15, PC8-PC13
+   C12 = C1, C13/OC13 = C10, C14 = C0, C11 = C6, C15 = C7
+   */
+k375_pin minial_write_pins[11] =
+{
+	{GPIOA, GPIO11}, {GPIOA, GPIO12}, {GPIOA, GPIO13}, {GPIOA, GPIO14}, {GPIOA, GPIO15},
+	{GPIOC, GPIO8}, {GPIOC, GPIO9}, {GPIOC, GPIO10}, {GPIOC, GPIO11}, {GPIOC, GPIO12},
+	{GPIOC, GPIO13},
+};
+
+/* R0-R7 -> PC0-PC7 */
+k375_pin minial_read_pins[8] =
+{
+	{GPIOC, GPIO0}, {GPIOC, GPIO1}, {GPIOC, GPIO2}, {GPIOC, GPIO3},
+	{GPIOC, GPIO4}, {GPIOC, GPIO5}, {GPIOC, GPIO6}, {GPIOC, GPIO7},
+};
+
 void pullup_all_write_pins(void);
 void pulldown_all_write_pins(void);
 void compile_k375s_matrix(uint16_t *k);
@@ -811,6 +828,30 @@ setup_k375s_pins(void)
 //	exti_enable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 | EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
 }
 
+void
+setup_filco_minial_pins(void)
+{
+	/* write pin, PA11-PA15, PC8-PC13 */
+	rcc_periph_clock_enable(RCC_GPIOA);
+	rcc_periph_clock_enable(RCC_GPIOC);
+
+	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+
+	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+
+	/* pullup all write pins */
+	gpio_set(GPIOA, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+	gpio_set(GPIOC, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+
+	/* read pin, PC0-PC7 */
+	rcc_periph_clock_enable(RCC_GPIOC);
+
+	gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+			GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
+}
+
 int
 main(void)
 {
@@ -818,6 +859,7 @@ main(void)
 	flash_prefetch_enable();
 	setup_usart1();
 	setup_k375s_pins();
+	setup_filco_minial_pins();
 
 	boot_cause = get_boot_cause();
 
