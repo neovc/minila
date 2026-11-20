@@ -25,7 +25,7 @@
 
 #include "keyboard.h"
 
-#define DEFAULT_REPEAT_CNT 5 // minial is 3
+#define DEFAULT_REPEAT_CNT 5 // minium is 3
 #define KEY_BUFFER_SIZE 5
 
 uint8_t
@@ -96,6 +96,8 @@ mr_fn_minila_k375s[11][8] =
 	{0x7A, 0x73, 0x62, 0x0, 0x53, 0x0, 0x34, 0x0},
 };
 
+#define K375S_FN 0x89
+
 typedef struct {
        uint32_t gpio, pin;
 } k375_pin;
@@ -119,7 +121,7 @@ k375_pin k375_write_pins[10] =
 /* C0-C11 -> PA11-PA15, PC8-PC13
    C12 = C1, C13/OC13 = C10, C14 = C0, C11 = C6, C15 = C7
    */
-k375_pin minial_write_pins[11] =
+k375_pin minila_write_pins[11] =
 {
 	{GPIOA, GPIO11}, {GPIOA, GPIO12}, {GPIOA, GPIO13}, {GPIOA, GPIO14}, {GPIOA, GPIO15},
 	{GPIOC, GPIO8}, {GPIOC, GPIO9}, {GPIOC, GPIO10}, {GPIOC, GPIO11}, {GPIOC, GPIO12},
@@ -127,11 +129,25 @@ k375_pin minial_write_pins[11] =
 };
 
 /* R0-R7 -> PC0-PC7 */
-k375_pin minial_read_pins[8] =
+k375_pin minila_read_pins[8] =
 {
 	{GPIOC, GPIO0}, {GPIOC, GPIO1}, {GPIOC, GPIO2}, {GPIOC, GPIO3},
 	{GPIOC, GPIO4}, {GPIOC, GPIO5}, {GPIOC, GPIO6}, {GPIOC, GPIO7},
 };
+
+#define KEY_PRESSED 1
+#define KEY_RELEASED 0
+
+typedef struct {
+	uint8_t onoff, debounce;
+	uint8_t last_onoff, changed;
+} keys;
+
+uint8_t appkey_row = 12, appkey_coloum = 5; /* APP KEY matrix position */
+uint8_t lfnkey_row = 11, lfnkey_coloum = 2; /* Left FN KEY matrix position */
+uint8_t rfnkey_row = 11, rfnkey_coloum = 0; /* Right FN KEY matrix position */
+
+keys g_minila_keys[11][8];
 
 void pullup_all_write_pins(void);
 void pulldown_all_write_pins(void);
@@ -156,7 +172,7 @@ uint8_t freertos_started = 0, feed_iwdg = 1, boot_cause = 0;
 uint8_t get_boot_cause(void);
 
 int is_k375s_idle(void);
-uint8_t debug_mode = 0;
+uint8_t debug_mode = 0, lprun_mode = 0;
 
 #define MAX_ARGS 10
 #define USART_CONSOLE USART1
@@ -651,6 +667,137 @@ key_cmd(int argc, char **argv)
 	vTaskDelay(pdMS_TO_TICKS(100));
 }
 
+#define KEY_PRESSED 1
+#define KEY_RELEASED 0
+
+void
+pulldown_all_minila_lines(void)
+{
+	gpio_clear(minila_write_pins[0].gpio,
+			minila_write_pins[0].pin | minila_write_pins[1].pin | minila_write_pins[2].pin |
+			minila_write_pins[3].pin | minila_write_pins[4].pin
+			);
+
+	gpio_clear(minila_write_pins[5].gpio,
+			minila_write_pins[5].pin | minila_write_pins[6].pin | minila_write_pins[7].pin |
+			minila_write_pins[8].pin | minila_write_pins[9].pin | minila_write_pins[10].pin
+			);
+}
+
+void
+scan_minila_line(uint8_t i)
+{
+	if (i > 10)
+		return;
+	/* pullup matrix line i */
+	gpio_set(minila_write_pins[i].gpio, minila_write_pins[i].pin);
+	/* pulldown previous matrix line */
+	if (i == 0)
+		gpio_clear(minila_write_pins[10].gpio, minila_write_pins[10].pin);
+	else
+		gpio_clear(minila_write_pins[i-1].gpio, minila_write_pins[i-1].pin);
+}
+
+void
+delay_us(int k)
+{
+	int i;
+
+	for (i = 0; i < k; i ++)
+		__asm__ volatile("nop");
+}
+
+void
+scan_minila_keys(void)
+{
+	uint8_t i, j, k;
+	uint8_t v, m;
+	uint16_t k375s_output[13];
+	uint8_t is_lfn = 0, is_rfn = 0, is_appkey = 0;
+
+	for (k = 0; k <= DEFAULT_REPEAT_CNT; k ++) {
+		pulldown_all_minila_lines();
+		for (i = 0; i < 11; i ++) {
+			scan_minila_line(i);
+			delay_us(31 * 2); /* 2us for 32M hz */
+			v = gpio_get(minila_read_pins[0].gpio,
+					minila_read_pins[0].pin | minila_read_pins[1].pin | minila_read_pins[2].pin | minila_read_pins[3].pin |
+					minila_read_pins[4].pin | minila_read_pins[5].pin | minila_read_pins[6].pin | minila_read_pins[7].pin);
+
+			for (j = 0; j < 8; j ++) {
+				if (v & 0x1) {
+					/* key pressed */
+					if (g_minila_keys[i][j].onoff == KEY_PRESSED) {
+						g_minila_keys[i][j].debounce ++;
+					} else {
+						g_minila_keys[i][j].debounce = 0;
+						g_minila_keys[i][j].onoff = KEY_PRESSED;
+					}
+				} else {
+					/* key released */
+					if (g_minila_keys[i][j].onoff == KEY_RELEASED) {
+						g_minila_keys[i][j].debounce ++;
+					} else {
+						g_minila_keys[i][j].debounce = 0;
+						g_minila_keys[i][j].onoff = KEY_RELEASED;
+					}
+				}
+				v >>= 1;
+				if (k == DEFAULT_REPEAT_CNT) {
+					/* last round */
+					if (g_minila_keys[i][j].debounce >= DEFAULT_REPEAT_CNT) {
+					       /* confirmed */
+						g_minila_keys[i][j].changed = (g_minila_keys[i][j].last_onoff != g_minila_keys[i][j].onoff);
+						g_minila_keys[i][j].last_onoff = g_minila_keys[i][j].onoff;
+					} else {
+						/* restore previous onoff */
+						g_minila_keys[i][j].changed = 0;
+						g_minila_keys[i][j].onoff = g_minila_keys[i][j].last_onoff;
+					}
+					g_minila_keys[i][j].debounce = 0;
+				}
+			}
+			delay_us(31 * 2); /* 2us for 32M hz */
+		}
+	}
+
+	is_appkey = (g_minila_keys[appkey_row][appkey_coloum].onoff == KEY_PRESSED);
+	is_lfn = (g_minila_keys[lfnkey_row][lfnkey_coloum].onoff == KEY_PRESSED);
+	is_rfn = (g_minila_keys[rfnkey_row][rfnkey_coloum].onoff == KEY_PRESSED);
+
+	if (is_appkey) {
+		/* check appkey status */
+		/* handle appkey + '1' ~ '6' here */
+	} else if (is_lfn || is_rfn) {
+		/* fn pressed */
+	}
+
+	memset(k375s_output, 0, sizeof(k375s_output));
+	/* check minila key onoff with last_onoff */
+	for (i = 0; i < 11; i ++) {
+		for (j = 0; j < 8; j ++) {
+			if (g_minila_keys[i][j].onoff == KEY_PRESSED) {
+				if (is_lfn || is_rfn)
+					m = mr_fn_minila_k375s[i][j];
+				else
+					m = mr_minila_k375s[i][j];
+
+				if (m) { // found match
+					k375s_output[(m&0xf)-1] |= 1 << (((m>>4)&0xf)-1);
+				}
+			}
+		}
+	}
+
+	if (is_lfn && is_rfn) {
+		/* both fn are pressed */
+		/* PRESS FN of K375s */
+		k375s_output[(K375S_FN&0xf)-1] |= 1 << (((K375S_FN>>4)&0xf)-1);
+	}
+
+	append_global_keys(k375s_output);
+}
+
 static void
 init_task(void *unused)
 {
@@ -829,7 +976,7 @@ setup_k375s_pins(void)
 }
 
 void
-setup_filco_minial_pins(void)
+setup_filco_minila_pins(void)
 {
 	/* write pin, PA11-PA15, PC8-PC13 */
 	rcc_periph_clock_enable(RCC_GPIOA);
@@ -841,9 +988,9 @@ setup_filco_minial_pins(void)
 	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
 	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
 
-	/* pullup all write pins */
-	gpio_set(GPIOA, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
-	gpio_set(GPIOC, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+	/* pulldown all write pins */
+	gpio_clear(GPIOA, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+	gpio_clear(GPIOC, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
 
 	/* read pin, PC0-PC7 */
 	rcc_periph_clock_enable(RCC_GPIOC);
@@ -907,8 +1054,10 @@ main(void)
 	flash_prefetch_enable();
 	setup_usart1();
 	setup_k375s_pins();
-	setup_filco_minial_pins();
+	setup_filco_minila_pins();
 	setup_tim2_32m();
+
+	memset(&g_minila_keys, 0, sizeof(g_minila_keys));
 
 	boot_cause = get_boot_cause();
 
