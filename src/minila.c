@@ -852,6 +852,54 @@ setup_filco_minial_pins(void)
 			GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
 }
 
+/* RUN mode -> CPU 32M HZ */
+void
+setup_tim2_32m(void)
+{
+	rcc_periph_clock_enable(RCC_TIM2);
+	rcc_periph_reset_pulse(RST_TIM2);
+
+	timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+	timer_set_prescaler(TIM2, 127); /* 32M/(127+1)= 1/4 M */
+
+	timer_set_period(TIM2, 249); /* (249+1) * 4us = 1000us = 1ms */
+
+	timer_enable_counter(TIM2);
+}
+
+void
+delay_32m_1ms(void)
+{
+	timer_set_counter(TIM2, 0);
+	timer_clear_flag(TIM2, TIM_SR_UIF);
+
+	while (!timer_get_flag(TIM2, TIM_SR_UIF));
+}
+
+/* LP RUN mode -> CPU 131K HZ */
+void
+setup_tim2_131k(void)
+{
+	rcc_periph_clock_enable(RCC_TIM2);
+	rcc_periph_reset_pulse(RST_TIM2);
+
+	timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+	timer_set_prescaler(TIM2, 130); /* 131M/(130+1)= 1K */
+
+	timer_set_period(TIM2, 99); /* (99+1) * 1ms = 100ms */
+
+	timer_enable_counter(TIM2);
+}
+
+void
+delay_131k_100ms(void)
+{
+	timer_set_counter(TIM2, 0);
+	timer_clear_flag(TIM2, TIM_SR_UIF);
+
+	while (!timer_get_flag(TIM2, TIM_SR_UIF));
+}
+
 int
 main(void)
 {
@@ -860,6 +908,7 @@ main(void)
 	setup_usart1();
 	setup_k375s_pins();
 	setup_filco_minial_pins();
+	setup_tim2_32m();
 
 	boot_cause = get_boot_cause();
 
