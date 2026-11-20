@@ -782,7 +782,7 @@ scan_minila_keys(void)
 				else
 					m = mr_minila_k375s[i][j];
 
-				if (m) { // found match
+				if (m && (m != K375S_FN)) { // found match and ignore FN
 					k375s_output[(m&0xf)-1] |= 1 << (((m>>4)&0xf)-1);
 				}
 			}
