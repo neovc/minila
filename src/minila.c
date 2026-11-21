@@ -997,7 +997,7 @@ setup_filco_minila_pins(void)
 	/* read pin, PC0-PC7 */
 	rcc_periph_clock_enable(RCC_GPIOC);
 
-	gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+	gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN,
 			GPIO0 | GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6 | GPIO7);
 }
 
