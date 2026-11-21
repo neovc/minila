@@ -963,7 +963,7 @@ setup_k375s_pins(void)
 	nvic_set_priority(NVIC_EXTI2_3_IRQ, IRQ2NVIC_PRIOR(configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY));
 	nvic_enable_irq(NVIC_EXTI2_3_IRQ);
 
-	exti_enable_request(EXTI3);
+//	exti_enable_request(EXTI3);
 
 	exti_select_source(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI8 | EXTI9 | EXTI10 |
 			EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15, GPIOB);
