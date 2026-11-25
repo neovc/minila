@@ -156,6 +156,8 @@ void compile_k375s_matrix(uint16_t *k);
 void send_k375s_key(void);
 void append_global_keys(uint16_t *);
 
+void scan_minila_keys(void);
+
 extern const struct rcc_clock_scale rcc_hsi_configs[];
 extern unsigned __app_size__, __app_start__;
 
@@ -184,6 +186,7 @@ void test_cmd(int argc, char **argv);
 void key_cmd(int argc, char **argv);
 void idle_cmd(int argc, char **argv);
 void debug_cmd(int argc, char **argv);
+void scan_cmd(int argc, char **argv);
 
 static void
 setup_usart1(void)
@@ -393,6 +396,10 @@ const command_t gosh_cmds[] = {
 		.handler = help_cmd,
 	},
 	{
+		.name = "scan",
+		.handler = scan_cmd,
+	},
+	{
 		.name = "test",
 		.handler = test_cmd,
 	},
@@ -575,6 +582,12 @@ void
 debug_cmd(int argc, char **argv)
 {
 	debug_mode = 1 - debug_mode;
+}
+
+void
+scan_cmd(int argc, char **argv)
+{
+	scan_minila_keys();
 }
 
 void
@@ -804,16 +817,13 @@ static void
 init_task(void *unused)
 {
 	freertos_started = 1;
-	int i = 1;
-
 //	printf("APP CALC 0x%x %s ORIG 0x%x\n", (unsigned int) calc_crc, (calc_crc == orig_crc)?"=":"!=", (unsigned int) orig_crc);
 
 	while (1) {
-		if ((((i ++) % 500) == 0) && feed_iwdg)
+		if (feed_iwdg)
 			iwdg_reset(); /* feed iwdg, reset IWDG */
 
-		scan_minila_keys();
-		vTaskDelay(pdMS_TO_TICKS(1));
+		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
 
