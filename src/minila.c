@@ -118,12 +118,13 @@ k375_pin k375_write_pins[10] =
 	{GPIOA, GPIO5}, {GPIOA, GPIO6}, {GPIOA, GPIO7}, {GPIOB, GPIO0}, {GPIOB, GPIO1},
 };
 
-/* C0-C11 -> PA11-PA15, PC8-PC13
+/* C0-C11 -> PA8, PA11, PA12, PA15, PB2, PC8-PC13
    C12 = C1, C13/OC13 = C10, C14 = C0, C11 = C6, C15 = C7
    */
 k375_pin minila_write_pins[11] =
 {
-	{GPIOA, GPIO11}, {GPIOA, GPIO12}, {GPIOA, GPIO13}, {GPIOA, GPIO14}, {GPIOA, GPIO15},
+	{GPIOA, GPIO8}, {GPIOA, GPIO11}, {GPIOA, GPIO12}, {GPIOA, GPIO15},
+	{GPIOB, GPIO2},
 	{GPIOC, GPIO8}, {GPIOC, GPIO9}, {GPIOC, GPIO10}, {GPIOC, GPIO11}, {GPIOC, GPIO12},
 	{GPIOC, GPIO13},
 };
@@ -671,12 +672,13 @@ key_cmd(int argc, char **argv)
 #define KEY_RELEASED 0
 
 void
-pulldown_all_k375s_minila_lines(void)
+pulldown_all_minila_lines(void)
 {
 	gpio_clear(minila_write_pins[0].gpio,
 			minila_write_pins[0].pin | minila_write_pins[1].pin | minila_write_pins[2].pin |
-			minila_write_pins[3].pin | minila_write_pins[4].pin
-			);
+			minila_write_pins[3].pin);
+
+	gpio_clear(minila_write_pins[4].gpio, minila_write_pins[4].pin);
 
 	gpio_clear(minila_write_pins[5].gpio,
 			minila_write_pins[5].pin | minila_write_pins[6].pin | minila_write_pins[7].pin |
@@ -716,7 +718,7 @@ scan_minila_keys(void)
 	uint8_t is_lfn = 0, is_rfn = 0, is_appkey = 0;
 
 	for (k = 0; k <= DEFAULT_REPEAT_CNT; k ++) {
-		pulldown_all_k375s_minila_lines();
+		pulldown_all_minila_lines();
 		for (i = 0; i < 11; i ++) {
 			scan_minila_line(i);
 			delay_us(31 * 2); /* 2us for 32M hz */
@@ -980,19 +982,22 @@ setup_k375s_pins(void)
 void
 setup_filco_minila_pins(void)
 {
-	/* write pin, PA11-PA15, PC8-PC13 */
+	/* write pin, PA8, PA11, PA12, PA15, PB2, PC8-PC13 */
 	rcc_periph_clock_enable(RCC_GPIOA);
+	rcc_periph_clock_enable(RCC_GPIOB);
 	rcc_periph_clock_enable(RCC_GPIOC);
 
-	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
-	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
+	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO8 | GPIO11 | GPIO12 | GPIO15);
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO8 | GPIO11 | GPIO12 | GPIO15);
 
-	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO2);
+	gpio_set_output_options(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO2);
+
+	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLDOWN, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
 	gpio_set_output_options(GPIOC, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
 
 	/* pulldown all write pins */
-	gpio_clear(GPIOA, GPIO11 | GPIO12 | GPIO13 | GPIO14 | GPIO15);
-	gpio_clear(GPIOC, GPIO8 | GPIO9 | GPIO10 | GPIO11 | GPIO12 | GPIO13);
+	pulldown_all_minila_lines();
 
 	/* read pin, PC0-PC7 */
 	rcc_periph_clock_enable(RCC_GPIOC);
