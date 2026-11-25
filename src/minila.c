@@ -149,8 +149,8 @@ uint8_t rfnkey_row = 11, rfnkey_coloum = 0; /* Right FN KEY matrix position */
 
 keys g_minila_keys[11][8];
 
-void pullup_all_write_pins(void);
-void pulldown_all_write_pins(void);
+void pullup_all_k375s_write_pins(void);
+void pulldown_all_k375s_write_pins(void);
 void compile_k375s_matrix(uint16_t *k);
 void send_k375s_key(void);
 void append_global_keys(uint16_t *);
@@ -485,7 +485,7 @@ is_k375s_idle(void)
 }
 
 void
-pullup_all_write_pins(void)
+pullup_all_k375s_write_pins(void)
 {
 	/* pull up all write pins */
 	GPIO_BSRR(k375_write_pins[0].gpio) = (k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
@@ -494,7 +494,7 @@ pullup_all_write_pins(void)
 }
 
 void
-pulldown_all_write_pins(void)
+pulldown_all_k375s_write_pins(void)
 {
 	/* pull up all write pins */
 	GPIO_BSRR(k375_write_pins[0].gpio) = (k375_write_pins[0].pin | k375_write_pins[1].pin | k375_write_pins[2].pin | k375_write_pins[3].pin |
@@ -561,7 +561,7 @@ send_k375s_key(void)
 	g_key_idx ++;
 
 	if (is_k375s_idle())
-		pulldown_all_write_pins();
+		pulldown_all_k375s_write_pins();
 
 	key_press_cnt = DEFAULT_REPEAT_CNT;
 	key_press_pin = 0;
@@ -616,7 +616,7 @@ test_cmd(int argc, char **argv)
 	compile_k375s_matrix(k375s_output);
 
 	if (is_k375s_idle())
-		pulldown_all_write_pins();
+		pulldown_all_k375s_write_pins();
 
 	key_press_cnt = DEFAULT_REPEAT_CNT;
 	key_press_pin = 0;
@@ -671,7 +671,7 @@ key_cmd(int argc, char **argv)
 #define KEY_RELEASED 0
 
 void
-pulldown_all_minila_lines(void)
+pulldown_all_k375s_minila_lines(void)
 {
 	gpio_clear(minila_write_pins[0].gpio,
 			minila_write_pins[0].pin | minila_write_pins[1].pin | minila_write_pins[2].pin |
@@ -716,7 +716,7 @@ scan_minila_keys(void)
 	uint8_t is_lfn = 0, is_rfn = 0, is_appkey = 0;
 
 	for (k = 0; k <= DEFAULT_REPEAT_CNT; k ++) {
-		pulldown_all_minila_lines();
+		pulldown_all_k375s_minila_lines();
 		for (i = 0; i < 11; i ++) {
 			scan_minila_line(i);
 			delay_us(31 * 2); /* 2us for 32M hz */
@@ -925,7 +925,7 @@ exti4_15_isr(void)
 		clear_all_line = 0;
 		exti_disable_request(EXTI4 | EXTI5 | EXTI6 | EXTI7 | EXTI8 | EXTI9 |
 			EXTI10 | EXTI11 | EXTI12 | EXTI13 | EXTI14 | EXTI15);
-		pullup_all_write_pins();
+		pullup_all_k375s_write_pins();
 	} else if (key_pressed && key_press_pin > 0) {
 		pulldown_write_pins(key_press_pin);
 		exti_disable_request(exti_array[key_press_pin]);
@@ -952,7 +952,7 @@ setup_k375s_pins(void)
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO0 | GPIO1);
 	gpio_set_output_options(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, GPIO0 | GPIO1);
 
-	pullup_all_write_pins();
+	pullup_all_k375s_write_pins();
 
 	/* setup EXTI interrupts */
 	rcc_periph_clock_enable(RCC_SYSCFG);
