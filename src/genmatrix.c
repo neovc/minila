@@ -111,6 +111,24 @@ int main(void)
 		fprintf(fp, "},\n");
 	}
 
+	fprintf(fp, "};\n\n");
+
+	fprintf(fp, "uint8_t\nconvertiable2_k375s[15][8] =\n{\n");
+	for (i = 0; i < 15; i ++) {
+		fprintf(fp, "\t{");
+		for (j = 0; j < 8; j ++) {
+			k = find_match(convertiable2_tkl_matrix[i][j]);
+			if (j == 7)
+				fprintf(fp, "0x%0X", k);
+			else
+				fprintf(fp, "0x%0X, ", k);
+			if (k == 0 && convertiable2_tkl_matrix[i][j] != 0) {
+				printf("can't find match for convertiable2_tkl_matrix[%d][%d]\n", i+1, j+1);
+			}
+		}
+		fprintf(fp, "},\n");
+	}
+
 	fprintf(fp, "};\n");
 	fclose(fp);
 	return 0;
